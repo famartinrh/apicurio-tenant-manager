@@ -1,0 +1,95 @@
+name: Release Images
+on:
+  workflow_dispatch: {}
+  release:
+    types: [released, prereleased]
+
+
+# github.event context is only available when the workflow gets triggered by a release event. Therefore, commenting the below
+# section and add an additional step of fething the required details explicitly to make the workflow work with manual triggers
+
+#env:
+#  # Setting up workflow level environment varibles to make them available in both jobs
+#  # The values are extracted from the github.event context, which is automatically availble when a release a created.
+#  RELEASE_VERSION: ${{ github.event.release.name }}
+#  SOURCE_CODE_URL: ${{ github.event.release.zipball_url }}
+#  BRANCH: ${{ github.event.release.target_commitish }}
+
+
+jobs:
+  release-images:
+    if: github.repository_owner == 'Apicurio'
+    runs-on: ubuntu-18.04
+    steps:
+
+      - name: Fetch required Details
+        run: |
+          touch latestRelease.json && curl https://api.github.com/repos/${GITHUB_REPOSITORY}/releases | jq '.[0]' > latestRelease.json
+          echo "RELEASE_VERSION=$(cat latestRelease.json | jq -r '.name')" >> $GITHUB_ENV
+          echo "SOURCE_CODE_URL=$(cat latestRelease.json | jq -r '.zipball_url')" >> $GITHUB_ENV
+          echo "BRANCH=$(cat latestRelease.json | jq -r '.target_commitish')" >> $GITHUB_ENV
+
+      
+      - name: Download Source Code
+        run: wget -c $SOURCE_CODE_URL && unzip $RELEASE_VERSION && ls -lrt && mv ${{github.repository_owner}}* code
+        
+      # We have faced issues in the past where a github release was created from a wrong commit
+      # This step will ensure that the release was created from the right commit  
+      - name: Verify Project Version
+        run: |
+          cd code
+          PROJECT_VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
+          if [[ $PROJECT_VERSION != $RELEASE_VERSION ]]
+          then
+              echo "ERROR: Project Version '${PROJECT_VERSION}' does not match with Released Version '${RELEASE_VERSION}'"
+              exit 1	  
+          fi
+
+      - name: Set up JDK 11
+        uses: AdoptOpenJDK/install-jdk@v1
+        with:
+          version: '11'
+          architecture: x64
+
+      - name: Verify Build
+        env:
+          SKIP_TESTS: "true"
+          BUILD_FLAGS: '-Dmaven.wagon.httpconnectionManager.maxTotal=30 -Dmaven.wagon.http.retryHandler.count=5 --no-transfer-progress'
+        run: cd code && make build-project
+
+      - name: Build Images for Docker.io
+        env:
+          IMAGE_TAG: "{{env.RELEASE_VERSION}}"
+        run: make build-image
+
+      - name: List All The Images
+        run: docker images
+
+      - name: Push Images To Docker.io
+        env:
+          IMAGE_TAG: "{{env.RELEASE_VERSION}}"
+        run: make push-image
+
+      - name: Build Images for Quay.io
+        env:
+          IMAGE_ORG: "quay.io"
+          IMAGE_TAG: "{{env.RELEASE_VERSION}}"
+        run: make build-image
+
+      - name: List All The Images
+        run: docker images
+
+      - name: Push Images To Quay.io
+        if: github.event_name == 'push'
+        env:
+          IMAGE_ORG: "quay.io"
+          IMAGE_TAG: "{{env.RELEASE_VERSION}}"
+        run: make push-image
+
+      - name: Google Chat Notification
+        if: ${{ failure() }}
+        uses: Co-qn/google-chat-notification@releases/v1
+        with:
+          name: ${{ env.GITHUB_REPOSITORY }}-${{ github.workflow }}
+          url: ${{ secrets.GOOGLE_CHAT_WEBHOOK }}
+          status: ${{ job.status }}

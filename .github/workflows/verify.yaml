@@ -1,0 +1,76 @@
+name: Verify Build Workflow
+on:
+  push:
+    paths-ignore:
+      - '.gitignore'
+      - 'LICENSE'
+      - 'README*'
+      - 'CODE_OF_CONDUCT*'
+    branches: [main]
+  pull_request:
+    paths-ignore:
+      - '.gitignore'
+      - 'LICENSE'
+      - 'README*'
+      - 'CODE_OF_CONDUCT*'
+    branches: [main]
+
+jobs:
+  build-verify:
+    name: Verify Build
+    runs-on: ubuntu-18.04
+    if: github.repository_owner == 'Apicurio'
+    steps:
+      - uses: actions/setup-java@v2
+        with:
+          distribution: 'adopt'
+          java-version: '11'
+
+      - name: Check Java Version
+        run: java -version
+
+      - name: Checkout Code
+        uses: actions/checkout@v2
+
+      - name: Verify Build
+        env:
+          SKIP_TESTS: "false"
+          BUILD_FLAGS: '-Dmaven.wagon.httpconnectionManager.maxTotal=30 -Dmaven.wagon.http.retryHandler.count=5 --no-transfer-progress'
+        run: |
+          make build-project
+
+      - name: Build Images for Docker.io
+        if: github.event_name == 'push'
+        env:
+          IMAGE_TAG: "snapshot"
+        run: make build-image
+
+      - name: List All The Images
+        if: github.event_name == 'push'
+        run: docker images
+
+      - name: Push Images To Docker.io
+        if: github.event_name == 'push'
+        env:
+          IMAGE_TAG: "snapshot"
+        run: make push-image
+
+      - name: Build Images for Quay.io
+        if: github.event_name == 'push'
+        env:
+          IMAGE_ORG: "quay.io"
+          IMAGE_TAG: "snapshot"
+        run: make build-image
+
+      - name: List All The Images
+        if: github.event_name == 'push'
+        run: docker images
+
+      - name: Push Images To Quay.io
+        if: github.event_name == 'push'
+        env:
+          IMAGE_ORG: "quay.io"
+          IMAGE_TAG: "snapshot"
+        run: make push-image
+
+      
