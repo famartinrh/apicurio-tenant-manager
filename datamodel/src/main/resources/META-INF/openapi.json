@@ -10,29 +10,6 @@
         }
     },
     "paths": {
-        "/registry": {
-            "summary": "Path used to access the information of the registry deployment being managed",
-            "description": "This path only contains a `GET` operation to obtain the details of the registry deployment that this tenant manager API is managing",
-            "get": {
-                "responses": {
-                    "200": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/RegistryDeploymentInfo"
-                                }
-                            }
-                        },
-                        "description": "Basic information about the Registry deployment being managed"
-                    },
-                    "500": {
-                        "$ref": "#/components/responses/ServerError"
-                    }
-                },
-                "operationId": "getRegistryInfo",
-                "summary": "Returns the details of the registry deployment being managed"
-            }
-        },
         "/system/info": {
             "summary": "Retrieve system information",
             "get": {
@@ -330,24 +307,6 @@
                         }
                     ],
                     "createdBy": "foo-user"
-                },
-                "x-codegen-package": "io.apicurio.multitenant.api.datamodel"
-            },
-            "RegistryDeploymentInfo": {
-                "title": "Root Type for RegistryDeployment",
-                "description": "Basic information of the Registry deployment that the Tenant Manager API is managing",
-                "type": "object",
-                "properties": {
-                    "name": {
-                        "type": "string"
-                    },
-                    "url": {
-                        "type": "string"
-                    }
-                },
-                "example": {
-                    "name": "registry-abc",
-                    "url": "https://registry.apps.com"
                 },
                 "x-codegen-package": "io.apicurio.multitenant.api.datamodel"
             },
