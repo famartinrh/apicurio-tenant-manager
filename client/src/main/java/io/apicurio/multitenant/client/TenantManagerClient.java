@@ -15,8 +15,6 @@
  */
 package io.apicurio.multitenant.client;
 
-import java.util.List;
-
 import io.apicurio.multitenant.api.datamodel.NewRegistryTenantRequest;
 import io.apicurio.multitenant.api.datamodel.RegistryTenant;
 import io.apicurio.multitenant.api.datamodel.RegistryTenantList;
@@ -29,9 +27,6 @@ import io.apicurio.multitenant.api.datamodel.UpdateRegistryTenantRequest;
  * @author Fabian Martinez
  */
 public interface TenantManagerClient {
-
-    @Deprecated
-    public List<RegistryTenant> listTenants();
 
     /**
      * List tenants using the provided search parameters.

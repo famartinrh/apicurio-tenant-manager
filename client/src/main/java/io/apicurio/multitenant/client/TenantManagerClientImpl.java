@@ -83,11 +83,6 @@ public class TenantManagerClientImpl implements TenantManagerClient {
     }
 
     @Override
-    public List<RegistryTenant> listTenants() {
-        return listTenants(null, 0, 50, null, null).getItems();
-    }
-
-    @Override
     public RegistryTenantList listTenants(TenantStatusValue status, Integer offset, Integer limit, SortOrder order, SortBy orderby) {
 
         Map<String, List<String>> queryParams = new HashMap<>();
